@@ -130,7 +130,6 @@
     </div>
 
     <!-- Main Layout (Full Screen) -->
-    <!-- Removed py-8 for overall top and bottom margin, allowing controls to flush -->
     <div class="relative z-10 flex flex-col h-screen">
         
         <!-- Title Area (Aligned to the top, added pt-8 back) -->
@@ -504,15 +503,25 @@
         };
 
         const handleQuoteClick = (quote) => {
+            // BUG FIX: If the text is fully dissolved, reset the effect state first
+            if (state.progress >= 1) {
+                handleReset(); 
+            }
+
             state.activeQuoteId = quote.id;
             state.currentText = quote.text;
             customInput.value = ""; // Clear custom input
             toggleQuoteMenu(false);
-            updateDisplayStyles(); // Update text content immediately
+            updateDisplayStyles(); // Update text content and styles immediately
             renderQuoteList(); // Re-render to show active state
         };
 
         const handleInputChange = (e) => {
+            // BUG FIX: If the text is fully dissolved, reset the effect state first
+            if (state.progress >= 1) {
+                handleReset();
+            }
+
             const val = e.target.value;
             state.currentText = val;
             state.activeQuoteId = null;
