@@ -1,0 +1,387 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { Play, Pause, RotateCcw, ChevronUp, ChevronDown } from 'lucide-react';
+
+// Tailwind is assumed to be available.
+// We will inject the font via a style tag in the render.
+
+const quotes = [
+  {
+    id: 1,
+    label: "QUOTE 1",
+    text: "Does it seem as if this ashram were too remote and monastic for the training of boys who, when they leave school, have to struggle in the modern world?"
+  },
+  {
+    id: 2,
+    label: "QUOTE 2",
+    text: "Then silence descended like shadows on a starlit hill, and I realised why the name \"Shantiniketan\" had been given to the place. A House of Peace, it certainly was."
+  },
+  {
+    id: 3,
+    label: "QUOTE 3",
+    text: "\"Under those trees he often walks on moonlight nights,\" gave me the feeling that I was a pilgrim visiting the shrine of a saint rather than a visitor to a School."
+  },
+  {
+    id: 4,
+    label: "QUOTE 4",
+    text: "The greatest teachers in ancient India, whose names are still remembered, were forest dwellers."
+  }
+];
+
+export default function App() {
+  // --- State ---
+  const [currentText, setCurrentText] = useState(quotes[0].text);
+  const [activeQuoteId, setActiveQuoteId] = useState(1);
+  const [customInput, setCustomInput] = useState("");
+  const [isQuoteMenuOpen, setIsQuoteMenuOpen] = useState(false);
+  
+  // Animation Control
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [progress, setProgress] = useState(0); // 0 = clear, 1 = fully dissolved
+  
+  // Sliders
+  const [speed, setSpeed] = useState(50); // 0-100, affects duration
+  const [textSize, setTextSize] = useState(50); // 0-100, affects font size
+
+  // Animation Frame Ref
+  const requestRef = useRef();
+  const startTimeRef = useRef();
+  const pausedProgressRef = useRef(0);
+
+  // --- Logic ---
+
+  // Calculate duration based on speed slider (inverse relationship)
+  const getDuration = () => {
+    const minDuration = 2000; // 2s
+    const maxDuration = 15000; // 15s
+    return maxDuration - ((speed / 100) * (maxDuration - minDuration));
+  };
+
+  // Animation Loop
+  const animate = (time) => {
+    if (!startTimeRef.current) {
+      startTimeRef.current = time;
+    }
+    
+    const duration = getDuration();
+    const runtime = time - startTimeRef.current; 
+    const relativeProgress = runtime / duration;
+    
+    const totalProgress = Math.min(pausedProgressRef.current + relativeProgress, 1);
+
+    setProgress(totalProgress);
+
+    if (totalProgress < 1) {
+      requestRef.current = requestAnimationFrame(animate);
+    } else {
+      setIsPlaying(false); // Stop when done
+      pausedProgressRef.current = 1;
+    }
+  };
+
+  useEffect(() => {
+    if (isPlaying) {
+      requestRef.current = requestAnimationFrame(animate);
+    } else {
+      cancelAnimationFrame(requestRef.current);
+      pausedProgressRef.current = progress;
+      startTimeRef.current = null; 
+    }
+    return () => cancelAnimationFrame(requestRef.current);
+  }, [isPlaying]);
+
+  // Reset Handler
+  const handleReset = () => {
+    setIsPlaying(false);
+    setProgress(0);
+    pausedProgressRef.current = 0;
+    startTimeRef.current = null;
+  };
+
+  const togglePlay = () => {
+    if (progress >= 1) {
+      handleReset();
+      setTimeout(() => setIsPlaying(true), 50);
+    } else {
+      setIsPlaying(!isPlaying);
+    }
+  };
+
+  // Handle Quote Selection
+  const handleQuoteClick = (quote) => {
+    setActiveQuoteId(quote.id);
+    setCurrentText(quote.text);
+    setCustomInput(""); 
+    setIsQuoteMenuOpen(false);
+  };
+
+  // Handle Custom Input
+  const handleInputChange = (e) => {
+    const val = e.target.value;
+    setCustomInput(val);
+    setCurrentText(val);
+    setActiveQuoteId(null); 
+  };
+
+  // --- Visual Calculation ---
+  
+  const currentFontSize = `${1.5 + (textSize / 100) * 3.5}rem`;
+  
+  // We now use these calculated values inside the SVG filter and CSS opacity
+  // Opacity fades out non-linearly to let the distortion be visible longer
+  const currentOpacity = Math.max(0, 1 - Math.pow(progress, 2.5));
+  
+  // Tracking increases significantly to simulate "dispersal"
+  const currentSpacing = `${progress * 20}px`;
+
+  return (
+    <div className="relative min-h-screen w-full overflow-hidden font-sans text-white selection:bg-pink-500 selection:text-white">
+      {/* Font Injection & Global Styles */}
+      <style>{`
+        /* Imported League Script for quotes and Public Sans for UI */
+        @import url('https://fonts.googleapis.com/css2?family=League+Script&family=Public+Sans:ital,wght@0,300;0,400;0,600;1,400&display=swap');
+        
+        body { font-family: 'Public Sans', sans-serif; }
+        
+        /* Custom class for the main quote text */
+        .font-display { font-family: 'League Script', cursive; }
+        
+        input[type=range] {
+          -webkit-appearance: none;
+          width: 100%;
+          background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          height: 24px;
+          width: 12px;
+          background: #ffffff; /* White thumb for dark bg */
+          cursor: pointer;
+          margin-top: -11px;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+          width: 100%;
+          height: 2px;
+          cursor: pointer;
+          background: rgba(255, 255, 255, 0.5);
+        }
+        input[type=range]:focus {
+          outline: none;
+        }
+
+        /* Smooth gradient animation */
+        @keyframes gradient-move {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        .animate-gradient-slow {
+          background-size: 200% 200%;
+          animation: gradient-move 15s ease infinite;
+        }
+
+        /* Noise grain pattern for the "sensory" texture */
+        .bg-noise {
+          background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.07'/%3E%3C/svg%3E");
+        }
+      `}</style>
+
+      {/* SVG FILTER DEFINITION 
+        This is the engine for the "wavy/distorted" dissolve effect.
+        It stays in the DOM but is visually hidden (width/height 0).
+      */}
+      <svg width="0" height="0" className="absolute">
+        <defs>
+          <filter id="organic-dissolve" x="-50%" y="-50%" width="200%" height="200%">
+            {/* 1. Create the Noise Texture (Turbulence) */}
+            <feTurbulence 
+              type="fractalNoise" 
+              baseFrequency="0.02" 
+              numOctaves="3" 
+              result="noise" 
+            />
+            {/* 2. Distort the Source Graphic using the Noise */}
+            {/* 'scale' is driven by React state 'progress'. High scale = massive distortion. */}
+            <feDisplacementMap 
+              in="SourceGraphic" 
+              in2="noise" 
+              scale={progress * 120} 
+              xChannelSelector="R" 
+              yChannelSelector="G" 
+              result="displaced"
+            />
+            {/* 3. Apply Blur to the distorted result */}
+            <feGaussianBlur 
+              in="displaced" 
+              stdDeviation={progress * 15} 
+              result="blurred"
+            />
+          </filter>
+        </defs>
+      </svg>
+
+      {/* Enhanced Ethereal Background - Royal Blue Version */}
+      <div className="absolute inset-0 z-0 bg-[#0033cc]">
+        {/* Base gradient mesh */}
+        <div className="absolute inset-0 bg-gradient-to-tr from-blue-900 via-blue-600 to-pink-300 opacity-80 animate-gradient-slow mix-blend-overlay" />
+        {/* Noise overlay for texture */}
+        <div className="absolute inset-0 bg-noise opacity-40 mix-blend-soft-light pointer-events-none" />
+        {/* Soft radial glow for the "starlit" feel */}
+        <div className="absolute top-[-20%] right-[-10%] w-[80vw] h-[80vw] bg-pink-200/20 rounded-full blur-[100px] pointer-events-none" />
+        <div className="absolute bottom-[-20%] left-[-10%] w-[60vw] h-[60vw] bg-blue-400/20 rounded-full blur-[80px] pointer-events-none" />
+      </div>
+
+      {/* Main Layout */}
+      <div className="relative z-10 flex flex-col h-screen">
+        
+        {/* Text Display Area */}
+        <div className="flex-1 flex items-center justify-center p-8 md:p-16 lg:p-24 text-center overflow-hidden">
+          <div 
+            className="font-display relative transition-all duration-75 ease-out" // Uses League Script
+            style={{
+              fontSize: currentFontSize,
+              // APPLY THE SVG FILTER HERE
+              filter: `url(#organic-dissolve)`, 
+              opacity: currentOpacity,
+              letterSpacing: currentSpacing,
+              transform: `scale(${1 + progress * 0.15})`, // Slight growth feels like "evaporating"
+              willChange: 'filter, opacity, transform',
+              maxWidth: '1000px',
+              lineHeight: 1.3,
+              fontWeight: 500,
+              color: '#ffffff', // White text for dark bg
+              // Text shadow for glow
+              textShadow: `0 0 ${progress * 40}px rgba(255,255,255, ${progress * 0.8})`
+            }}
+          >
+            {currentText || "Enter text below..."}
+          </div>
+        </div>
+
+        {/* Bottom Control Panel */}
+        <div className="w-full p-6 md:p-8 pb-10 bg-gradient-to-t from-blue-950/80 via-blue-900/40 to-transparent backdrop-blur-[2px]">
+          <div className="max-w-5xl mx-auto flex flex-col gap-6">
+            
+            {/* Top Row: Quote Selector & Input */}
+            <div className="flex items-end gap-4">
+              
+              {/* Collapsible Quote Menu (Opens Upwards) */}
+              <div className="relative">
+                {isQuoteMenuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setIsQuoteMenuOpen(false)} />
+                    <div className="absolute bottom-full mb-2 left-0 w-80 bg-blue-900/90 backdrop-blur-xl border border-white/20 rounded-lg shadow-2xl overflow-hidden z-20 flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-200 text-white font-sans">
+                      <div className="p-3 border-b border-white/10 text-xs font-bold tracking-widest opacity-60 bg-black/20">
+                        SELECT A QUOTE
+                      </div>
+                      <div className="max-h-60 overflow-y-auto py-1">
+                        {quotes.map((q) => (
+                          <button
+                            key={q.id}
+                            onClick={() => handleQuoteClick(q)}
+                            className={`w-full text-left px-4 py-3 text-sm hover:bg-white/10 transition-colors border-l-2 ${
+                              activeQuoteId === q.id ? 'border-white bg-white/5' : 'border-transparent opacity-70 hover:opacity-100'
+                            }`}
+                          >
+                            <span className="font-semibold block mb-1">{q.label}</span>
+                            <span className="line-clamp-2 text-xs font-light italic leading-relaxed opacity-80">{q.text}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+                <button 
+                  onClick={() => setIsQuoteMenuOpen(!isQuoteMenuOpen)}
+                  className={`h-[52px] px-4 border border-white/30 flex items-center gap-2 rounded-sm hover:bg-white/10 transition-all ${isQuoteMenuOpen ? 'bg-white/10 border-white' : ''}`}
+                >
+                  <span className="hidden md:inline font-medium text-sm tracking-wide font-sans">QUOTES</span>
+                  <ChevronUp size={16} className={`transition-transform duration-300 ${isQuoteMenuOpen ? 'rotate-180' : ''}`} />
+                </button>
+              </div>
+
+              {/* Text Input */}
+              <div className="relative group flex-1">
+                <input
+                  type="text"
+                  placeholder="Type your own ethereal thought here..."
+                  value={customInput}
+                  onChange={handleInputChange}
+                  className="w-full bg-transparent border border-white/30 text-base md:text-lg px-4 py-3 h-[52px] text-white placeholder-white/50 focus:outline-none focus:border-white focus:bg-white/5 transition-all rounded-sm italic font-sans font-light"
+                />
+              </div>
+            </div>
+
+            {/* Bottom Row: Sliders & Playback */}
+            <div className="flex flex-col md:flex-row gap-8 items-end md:items-center justify-between pt-4 border-t border-white/10 font-sans">
+              
+              {/* Sliders Group */}
+              <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-8 w-full">
+                
+                {/* Speed Slider */}
+                <div className="flex flex-col gap-2">
+                  <div className="flex justify-between text-xs font-medium tracking-wider opacity-70 uppercase">
+                    <span>Slow Dissolve</span>
+                    <span>Fast Dissolve</span>
+                  </div>
+                  <div className="relative h-6 flex items-center group">
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={speed}
+                      onChange={(e) => setSpeed(Number(e.target.value))}
+                      className="z-10 relative"
+                    />
+                    <div className="absolute top-1/2 left-0 w-full h-0.5 bg-white/30 group-hover:bg-white/50 transition-colors -translate-y-1/2 pointer-events-none" />
+                  </div>
+                </div>
+
+                {/* Size Slider */}
+                <div className="flex flex-col gap-2">
+                  <div className="flex justify-between text-xs font-medium tracking-wider opacity-70 uppercase">
+                    <span>Small Text</span>
+                    <span>Large Text</span>
+                  </div>
+                  <div className="relative h-6 flex items-center group">
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={textSize}
+                      onChange={(e) => setTextSize(Number(e.target.value))}
+                      className="z-10 relative"
+                    />
+                    <div className="absolute top-1/2 left-0 w-full h-0.5 bg-white/30 group-hover:bg-white/50 transition-colors -translate-y-1/2 pointer-events-none" />
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-3 flex-shrink-0">
+                <button
+                  onClick={togglePlay}
+                  className="w-12 h-12 border border-white flex items-center justify-center hover:bg-white hover:text-blue-900 transition-all active:scale-95 rounded-sm"
+                  title={isPlaying ? "Pause Effect" : "Start Effect"}
+                >
+                  {isPlaying ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" className="ml-0.5" />}
+                </button>
+                
+                <button
+                  onClick={handleReset}
+                  className="w-12 h-12 border border-white flex items-center justify-center hover:bg-white hover:text-blue-900 transition-all active:scale-95 group rounded-sm"
+                  title="Reset Visibility"
+                >
+                  <RotateCcw size={20} className="group-hover:-rotate-90 transition-transform duration-500" />
+                </button>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
+}
