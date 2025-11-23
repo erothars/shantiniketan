@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ethereal Dissolve Interface</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Load Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=League+Script&family=Public+Sans:ital,wght@0,300;0,400;0,600;1,400&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Custom class for the main quote text */
+        .font-display { 
+            font-family: 'League Script', cursive; 
+        }
+        
+        /* Ensure controls use Public Sans */
+        .font-sans {
+            font-family: 'Public Sans', sans-serif;
+        }
+
+        /* Input Range Styling (required for cross-browser consistency) */
+        input[type=range] {
+          -webkit-appearance: none;
+          width: 100%;
+          background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          height: 24px;
+          width: 12px;
+          background: #ffffff;
+          cursor: pointer;
+          margin-top: -11px;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+          width: 100%;
+          height: 2px;
+          cursor: pointer;
+          background: rgba(255, 255, 255, 0.5);
+        }
+        input[type=range]:focus {
+          outline: none;
+        }
+
+        /* Smooth gradient animation */
+        @keyframes gradient-move {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        .animate-gradient-slow {
+          background-size: 200% 200%;
+          animation: gradient-move 15s ease infinite;
+        }
+
+        /* Noise grain pattern for the "sensory" texture */
+        .bg-noise {
+          background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.07'/%3E%3C/svg%3E");
+        }
+        
+        /* Custom class for the upward menu animation */
+        .menu-slide-up {
+            animation: slideUp 0.3s ease-out forwards;
+        }
+        @keyframes slideUp {
+            from { transform: translateY(10px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .input-text {
+            /* Applied font-light (300) and italic to Public Sans */
+            font-weight: 300;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body class="bg-[#0033cc] min-h-screen w-full font-sans text-white selection:bg-pink-500 selection:text-white">
+
+    <!-- SVG FILTER DEFINITION -->
+    <svg width="0" height="0" class="absolute">
+        <defs>
+          <filter id="organic-dissolve" x="-50%" y="-50%" width="200%" height="200%">
+            <!-- 1. Create the Noise Texture (Turbulence) -->
+            <feTurbulence 
+              type="fractalNoise" 
+              baseFrequency="0.02" 
+              numOctaves="3" 
+              result="noise" 
+            />
+            <!-- 2. Distort the Source Graphic using the Noise (scale is set by JS) -->
+            <feDisplacementMap 
+              in="SourceGraphic" 
+              in2="noise" 
+              scale="0" 
+              xChannelSelector="R" 
+              yChannelSelector="G" 
+              result="displaced"
+              id="displacement-map"
+            />
+            <!-- 3. Apply Blur to the distorted result (stdDeviation is set by JS) -->
+            <feGaussianBlur 
+              in="displaced" 
+              stdDeviation="0" 
+              result="blurred"
+              id="gaussian-blur"
+            />
+          </filter>
+        </defs>
+      </svg>
+      
+    <!-- Enhanced Ethereal Background - Royal Blue Version -->
+    <div class="absolute inset-0 z-0 bg-[#0033cc]">
+        <!-- Base gradient mesh -->
+        <div class="absolute inset-0 bg-gradient-to-tr from-blue-900 via-blue-600 to-pink-300 opacity-80 animate-gradient-slow mix-blend-overlay"></div>
+        <!-- Noise overlay for texture -->
+        <div class="absolute inset-0 bg-noise opacity-40 mix-blend-soft-light pointer-events-none"></div>
+        <!-- Soft radial glow for the "starlit" feel -->
+        <div class="absolute top-[-20%] right-[-10%] w-[80vw] h-[80vw] bg-pink-200/20 rounded-full blur-[100px] pointer-events-none"></div>
+        <div class="absolute bottom-[-20%] left-[-10%] w-[60vw] h-[60vw] bg-blue-400/20 rounded-full blur-[80px] pointer-events-none"></div>
+    </div>
+
+    <!-- Main Layout -->
+    <div class="relative z-10 flex flex-col h-screen">
+        
+        <!-- Text Display Area -->
+        <div class="flex-1 flex items-center justify-center p-8 md:p-16 lg:p-24 text-center overflow-hidden">
+            <div 
+                id="quote-display"
+                class="font-display relative transition-all duration-75 ease-out"
+                style="font-size: 3.75rem; filter: url(#organic-dissolve); opacity: 1; letter-spacing: 0px; transform: scale(1); max-width: 1000px; line-height: 1.3; font-weight: 500; color: #ffffff; text-shadow: 0 0 0px rgba(255,255,255, 0);"
+            >
+                Does it seem as if this ashram were too remote and monastic for the training of boys who, when they leave school, have to struggle in the modern world?
+            </div>
+        </div>
+
+        <!-- Bottom Control Panel -->
+        <div class="w-full p-6 md:p-8 pb-10 bg-gradient-to-t from-blue-950/80 via-blue-900/40 to-transparent backdrop-blur-[2px]">
+            <div class="max-w-5xl mx-auto flex flex-col gap-6">
+                
+                <!-- Top Row: Quote Selector & Input -->
+                <div class="flex items-end gap-4">
+                    
+                    <!-- Collapsible Quote Menu -->
+                    <div class="relative">
+                        <!-- Dropdown Menu (hidden by default) -->
+                        <div id="quote-menu" class="absolute bottom-full mb-2 left-0 w-80 bg-blue-900/90 backdrop-blur-xl border border-white/20 rounded-lg shadow-2xl overflow-hidden z-20 flex flex-col hidden text-white font-sans">
+                            <div class="p-3 border-b border-white/10 text-xs font-bold tracking-widest opacity-60 bg-black/20">
+                                SELECT A QUOTE
+                            </div>
+                            <div id="quote-list" class="max-h-60 overflow-y-auto py-1">
+                                <!-- Quotes rendered by JS -->
+                            </div>
+                        </div>
+
+                        <button 
+                            id="quotes-toggle"
+                            class="h-[52px] px-4 border border-white/30 flex items-center gap-2 rounded-sm hover:bg-white/10 transition-all"
+                        >
+                            <span class="hidden md:inline font-medium text-sm tracking-wide font-sans">QUOTES</span>
+                            <i data-lucide="chevron-up" id="quotes-icon" class="w-4 h-4 transition-transform duration-300"></i>
+                        </button>
+                    </div>
+
+                    <!-- Text Input -->
+                    <div class="relative group flex-1">
+                        <input
+                            type="text"
+                            id="custom-input"
+                            placeholder="Type your own ethereal thought here..."
+                            class="w-full bg-transparent border border-white/30 text-base md:text-lg px-4 py-3 h-[52px] text-white placeholder-white/50 focus:outline-none focus:border-white focus:bg-white/5 transition-all rounded-sm font-sans input-text"
+                        />
+                    </div>
+                </div>
+
+                <!-- Bottom Row: Sliders & Playback -->
+                <div class="flex flex-col md:flex-row gap-8 items-end md:items-center justify-between pt-4 border-t border-white/10 font-sans">
+                    
+                    <!-- Sliders Group -->
+                    <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-8 w-full">
+                        
+                        <!-- Speed Slider -->
+                        <div class="flex flex-col gap-2">
+                            <div class="flex justify-between text-xs font-medium tracking-wider opacity-70 uppercase">
+                                <span>Slow Dissolve</span>
+                                <span>Fast Dissolve</span>
+                            </div>
+                            <div class="relative h-6 flex items-center group">
+                                <input
+                                    type="range"
+                                    min="0"
+                                    max="100"
+                                    value="50"
+                                    id="speed-slider"
+                                    class="z-10 relative"
+                                />
+                                <div class="absolute top-1/2 left-0 w-full h-0.5 bg-white/30 group-hover:bg-white/50 transition-colors -translate-y-1/2 pointer-events-none"></div>
+                            </div>
+                        </div>
+
+                        <!-- Size Slider -->
+                        <div class="flex flex-col gap-2">
+                            <div class="flex justify-between text-xs font-medium tracking-wider opacity-70 uppercase">
+                                <span>Small Text</span>
+                                <span>Large Text</span>
+                            </div>
+                            <div class="relative h-6 flex items-center group">
+                                <input
+                                    type="range"
+                                    min="0"
+                                    max="100"
+                                    value="50"
+                                    id="size-slider"
+                                    class="z-10 relative"
+                                />
+                                <div class="absolute top-1/2 left-0 w-full h-0.5 bg-white/30 group-hover:bg-white/50 transition-colors -translate-y-1/2 pointer-events-none"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex items-center gap-3 flex-shrink-0">
+                        <button
+                            id="play-pause-btn"
+                            class="w-12 h-12 border border-white flex items-center justify-center hover:bg-white hover:text-blue-900 transition-all active:scale-95 rounded-sm"
+                            title="Start Effect"
+                        >
+                            <i data-lucide="play" id="play-pause-icon" class="w-5 h-5 ml-0.5 fill-current"></i>
+                        </button>
+                        
+                        <button
+                            id="reset-btn"
+                            class="w-12 h-12 border border-white flex items-center justify-center hover:bg-white hover:text-blue-900 transition-all active:scale-95 group rounded-sm"
+                            title="Reset Visibility"
+                        >
+                            <i data-lucide="rotate-ccw" class="w-5 h-5 group-hover:-rotate-90 transition-transform duration-500"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- DATA ---
+        const QUOTES = [
+            {
+                id: 1,
+                label: "QUOTE 1",
+                text: "Does it seem as if this ashram were too remote and monastic for the training of boys who, when they leave school, have to struggle in the modern world?"
+            },
+            {
+                id: 2,
+                label: "QUOTE 2",
+                text: "Then silence descended like shadows on a starlit hill, and I realised why the name \"Shantiniketan\" had been given to the place. A House of Peace, it certainly was."
+            },
+            {
+                id: 3,
+                label: "QUOTE 3",
+                text: "\"Under those trees he often walks on moonlight nights,\" gave me the feeling that I was a pilgrim visiting the shrine of a saint rather than a visitor to a School."
+            },
+            {
+                id: 4,
+                label: "QUOTE 4",
+                text: "The greatest teachers in ancient India, whose names are still remembered, were forest dwellers."
+            }
+        ];
+
+        // --- DOM REFERENCES ---
+        const quoteDisplay = document.getElementById('quote-display');
+        const customInput = document.getElementById('custom-input');
+        const quoteMenu = document.getElementById('quote-menu');
+        const quoteList = document.getElementById('quote-list');
+        const quotesToggle = document.getElementById('quotes-toggle');
+        const quotesIcon = document.getElementById('quotes-icon');
+        const speedSlider = document.getElementById('speed-slider');
+        const sizeSlider = document.getElementById('size-slider');
+        const playPauseBtn = document.getElementById('play-pause-btn');
+        const playPauseIcon = document.getElementById('play-pause-icon');
+        const resetBtn = document.getElementById('reset-btn');
+        const displacementMap = document.getElementById('displacement-map');
+        const gaussianBlur = document.getElementById('gaussian-blur');
+
+        // --- STATE ---
+        let state = {
+            currentText: QUOTES[0].text,
+            activeQuoteId: QUOTES[0].id,
+            isPlaying: false,
+            progress: 0, // 0 = clear, 1 = fully dissolved
+            speed: 50,
+            textSize: 50,
+            isQuoteMenuOpen: false,
+            // Animation loop variables
+            animationFrame: null,
+            startTime: null,
+            pausedProgress: 0,
+        };
+
+        // --- UTILITIES ---
+
+        // Calculate duration based on speed slider (inverse relationship)
+        const getDuration = () => {
+            const minDuration = 2000; // 2s
+            const maxDuration = 15000; // 15s
+            return maxDuration - ((state.speed / 100) * (maxDuration - minDuration));
+        };
+
+        // --- RENDER & UPDATE FUNCTIONS ---
+
+        // Renders the quote list into the dropdown menu
+        const renderQuoteList = () => {
+            quoteList.innerHTML = QUOTES.map(q => `
+                <button
+                    data-id="${q.id}"
+                    class="quote-item w-full text-left px-4 py-3 text-sm hover:bg-white/10 transition-colors border-l-2 ${
+                        state.activeQuoteId === q.id ? 'border-white bg-white/5' : 'border-transparent opacity-70 hover:opacity-100'
+                    }"
+                >
+                    <span class="font-semibold block mb-1">${q.label}</span>
+                    <span class="line-clamp-2 text-xs font-light italic leading-relaxed opacity-80">${q.text}</span>
+                </button>
+            `).join('');
+            
+            // Attach event listeners to the new buttons
+            document.querySelectorAll('.quote-item').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const id = Number(e.currentTarget.getAttribute('data-id'));
+                    const quote = QUOTES.find(q => q.id === id);
+                    if (quote) {
+                        handleQuoteClick(quote);
+                    }
+                });
+            });
+        };
+
+        // Applies all dynamic styles to the quote display element
+        const updateDisplayStyles = () => {
+            const progress = state.progress;
+            
+            // Size
+            const currentFontSize = `${1.5 + (state.textSize / 100) * 3.5}rem`;
+            quoteDisplay.style.fontSize = currentFontSize;
+            
+            // Dissolve Calculations
+            const currentOpacity = Math.max(0, 1 - Math.pow(progress, 2.5));
+            const currentSpacing = `${progress * 20}px`;
+            const currentDisplacementScale = progress * 120;
+            const currentBlurDeviation = progress * 15;
+            const currentShadow = progress * 40;
+            const currentShadowOpacity = progress * 0.8;
+
+            // Apply to DOM elements
+            quoteDisplay.style.opacity = currentOpacity;
+            quoteDisplay.style.letterSpacing = currentSpacing;
+            quoteDisplay.style.transform = `scale(${1 + progress * 0.15})`;
+            quoteDisplay.style.textShadow = `0 0 ${currentShadow}px rgba(255,255,255, ${currentShadowOpacity})`;
+            
+            // Apply to SVG Filter elements
+            displacementMap.setAttribute('scale', currentDisplacementScale);
+            gaussianBlur.setAttribute('stdDeviation', currentBlurDeviation);
+
+            // Update text content
+            quoteDisplay.textContent = state.currentText || "Enter text below...";
+        };
+
+        // Toggles the visibility and animation of the quote menu
+        const toggleQuoteMenu = (open) => {
+            state.isQuoteMenuOpen = open !== undefined ? open : !state.isQuoteMenuOpen;
+            
+            if (state.isQuoteMenuOpen) {
+                quoteMenu.classList.remove('hidden');
+                quoteMenu.classList.add('menu-slide-up');
+                quotesToggle.classList.add('bg-white/10', 'border-white');
+                quotesIcon.classList.add('rotate-180');
+            } else {
+                quoteMenu.classList.remove('menu-slide-up');
+                quoteMenu.classList.add('hidden');
+                quotesToggle.classList.remove('bg-white/10', 'border-white');
+                quotesIcon.classList.remove('rotate-180');
+            }
+        };
+
+        // Updates the play/pause button icon
+        const updatePlayPauseButton = () => {
+            playPauseIcon.setAttribute('data-lucide', state.isPlaying ? 'pause' : 'play');
+            playPauseIcon.classList.toggle('ml-0.5', !state.isPlaying);
+            playPauseBtn.setAttribute('title', state.isPlaying ? 'Pause Effect' : 'Start Effect');
+            // Re-render lucide icons after updating the attribute
+            lucide.createIcons(); 
+        };
+
+        // --- ANIMATION LOOP ---
+
+        const animate = (time) => {
+            if (!state.startTime) {
+                state.startTime = time;
+            }
+            
+            const duration = getDuration();
+            const runtime = time - state.startTime; 
+            const relativeProgress = runtime / duration;
+            
+            const totalProgress = Math.min(state.pausedProgress + relativeProgress, 1);
+
+            state.progress = totalProgress;
+
+            updateDisplayStyles();
+
+            if (totalProgress < 1) {
+                state.animationFrame = requestAnimationFrame(animate);
+            } else {
+                state.isPlaying = false;
+                state.pausedProgress = 1;
+                updatePlayPauseButton();
+            }
+        };
+
+        // --- EVENT HANDLERS ---
+
+        const togglePlay = () => {
+            if (state.progress >= 1) {
+                handleReset();
+                // Little delay to let the reset styles apply before starting
+                setTimeout(() => {
+                    state.isPlaying = true;
+                    state.startTime = null;
+                    state.animationFrame = requestAnimationFrame(animate);
+                    updatePlayPauseButton();
+                }, 50);
+            } else {
+                state.isPlaying = !state.isPlaying;
+                state.startTime = null; // Forces a restart or pause logic
+                
+                if (state.isPlaying) {
+                    state.animationFrame = requestAnimationFrame(animate);
+                } else {
+                    cancelAnimationFrame(state.animationFrame);
+                    state.pausedProgress = state.progress;
+                }
+                updatePlayPauseButton();
+            }
+        };
+
+        const handleReset = () => {
+            state.isPlaying = false;
+            cancelAnimationFrame(state.animationFrame);
+            state.progress = 0;
+            state.pausedProgress = 0;
+            state.startTime = null;
+            updatePlayPauseButton();
+            updateDisplayStyles();
+        };
+
+        const handleQuoteClick = (quote) => {
+            state.activeQuoteId = quote.id;
+            state.currentText = quote.text;
+            customInput.value = ""; // Clear custom input
+            toggleQuoteMenu(false);
+            updateDisplayStyles(); // Update text content immediately
+            renderQuoteList(); // Re-render to show active state
+        };
+
+        const handleInputChange = (e) => {
+            const val = e.target.value;
+            state.currentText = val;
+            state.activeQuoteId = null;
+            updateDisplayStyles(); // Update text content immediately
+            renderQuoteList(); // Clear active state visually
+        };
+
+        const handleSliderChange = (e) => {
+            const value = Number(e.target.value);
+            if (e.target.id === 'speed-slider') {
+                state.speed = value;
+                // If animation is playing, pause and restart to apply new speed
+                if(state.isPlaying) {
+                    cancelAnimationFrame(state.animationFrame);
+                    state.startTime = null;
+                    state.pausedProgress = state.progress;
+                    state.animationFrame = requestAnimationFrame(animate);
+                }
+            } else if (e.target.id === 'size-slider') {
+                state.textSize = value;
+            }
+            updateDisplayStyles();
+        };
+
+        // --- INITIALIZATION ---
+        window.onload = () => {
+            // Initial render
+            renderQuoteList();
+            updateDisplayStyles();
+            updatePlayPauseButton();
+            lucide.createIcons(); // Initialize all Lucide icons
+
+            // Event Listeners
+            quotesToggle.addEventListener('click', () => toggleQuoteMenu());
+            playPauseBtn.addEventListener('click', togglePlay);
+            resetBtn.addEventListener('click', handleReset);
+            speedSlider.addEventListener('input', handleSliderChange);
+            sizeSlider.addEventListener('input', handleSliderChange);
+            customInput.addEventListener('input', handleInputChange);
+        };
+    </script>
+</body>
+</html>
