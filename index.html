@@ -79,7 +79,6 @@
 
         .input-text {
             /* Applied font-light (300) and italic to Public Sans */
-            font-size: 12px;
             font-weight: 300;
             font-style: italic;
         }
@@ -131,10 +130,11 @@
     </div>
 
     <!-- Main Layout (Full Screen) -->
+    <!-- Removed py-8 for overall top and bottom margin, allowing controls to flush -->
     <div class="relative z-10 flex flex-col h-screen">
         
-        <!-- Title Area (Aligned to the top with 20px padding) -->
-        <div class="w-full text-center pt-5 px-8">
+        <!-- Title Area (Aligned to the top, added pt-8 back) -->
+        <div class="w-full text-center px-8 pt-8">
             <h2 class="text-xs font-medium tracking-wider opacity-70 uppercase">
                 Inspired by Shantiniketan : The Bolpur School of Rabindranath Tagore
             </h2>
@@ -152,8 +152,9 @@
         </div>
 
         <!-- Bottom Control Panel -->
-        <div class="w-full p-6 md:p-8 pb-10 bg-gradient-to-t from-blue-950/80 via-blue-900/40 to-transparent backdrop-blur-[2px]">
-            <div class="max-w-5xl mx-auto flex flex-col gap-6">
+        <!-- Container for the flushing background and backdrop blur -->
+        <div class="w-full bg-gradient-to-t from-blue-950/80 via-blue-900/40 to-transparent backdrop-blur-[2px]">
+            <div class="max-w-5xl mx-auto flex flex-col gap-6 px-6 md:px-8 pt-4 pb-8">
                 
                 <!-- Top Row: Quote Selector & Input -->
                 <div class="flex items-end gap-4">
